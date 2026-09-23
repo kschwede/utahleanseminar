@@ -84,6 +84,9 @@ h2 { margin: 0 0 1rem; font-family: Georgia, "Times New Roman", serif; font-size
 .section-label { color: var(--utah-red-dark); }
 .intro { display: grid; grid-template-columns: minmax(0, 2fr) minmax(15rem, 1fr); gap: clamp(2rem, 6vw, 5rem); align-items: start; }
 .intro p:not(.section-label) { max-width: 44rem; font-size: 1.18rem; }
+.mailing-list-link { display: inline-block; padding: .65rem 1rem; color: #fff; background: var(--utah-red-dark); font-size: 1rem; font-weight: 750; text-decoration: none; }
+.mailing-list-link::after { content: " →"; }
+.mailing-list-link:hover { background: #640000; text-decoration: underline; text-decoration-thickness: .12em; }
 .organizers { padding: 1.6rem 1.8rem; background: var(--soft); border-top: .3rem solid var(--utah-red); }
 .organizers h2 { font-family: inherit; font-size: 1.15rem; }
 .organizers ul { margin: 0; padding-left: 1.2rem; }
