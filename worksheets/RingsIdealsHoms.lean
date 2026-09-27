@@ -33,12 +33,11 @@ example {R : Type} [CommRing R] (a b : R) : a + b - b = a := by
 -- Try proving these yourself. For a challenge, don't use ring.
 example {R : Type} [CommRing R] (a b : R) (h : a = b + 1) :
     a ^ 2 = b ^ 2 + 2 * b + 1 := by
-  rw [h]
-  ring
+  sorry
 
 example {R : Type} [CommRing R] (x y : R) :
     (x + y) * (x - y) = x ^ 2 - y ^ 2 := by
-  ring
+  sorry
 
 end Rings
 
@@ -75,21 +74,6 @@ example (x y : R) : f (x ^ 2 - y) = (f x) ^ 2 - f y := by
 
 example (x y : R) : f ((x - y) ^ 2) = (f x) ^ 2 - 2 * f x * f y + (f y) ^ 2 := by
   sorry
-  /-have h : (x-y)^2 = x^2  - 2*x*y + y^2 := by
-    ring
-  rw [h]
-  rw [f.map_add]
-  rw [f.map_sub]
-  repeat rw [f.map_pow]
-  rw [f.map_mul]
-  rw [f.map_mul]
-  have h1 : f 2 = 2 := by
-    have g1 : (1 : R) +1 = 2 := by ring
-    have g2 : (1 : S) +1 = 2 := by ring
-    rw [← g1, ← g2]
-    rw [f.map_add]
-    rw [f.map_one]
-  rw [h1]-/
 /-
 To define our own ring hom, replace the sorry below with `?_` then click the blue lightbulb and
 select "Generate a skeleton for the structure under construction". Then you will be asked to provide
@@ -97,25 +81,20 @@ a function along proofs that it maps 1 to 1, repects multiplication, etc. The `i
 be very helpful for this one.
 -/
 
-def identityRingHomTwo : R →+* R := by
-  sorry
+def identityRingHom : R →+* R := sorry
 
-/- Hint: -/
+/- Hint:
 def identityRingHom : R →+* R where
   toFun := by
     intro x
     exact x
-  map_one' := by
-    rfl
+  map_one' := sorry
   map_mul' := by
     intro x y
     rfl
-  map_zero' :=
-    rfl
-  map_add' := by
-    intro x y
-    rfl
-
+  map_zero' := sorry
+  map_add' := sorry
+-/
 
 /-
 To prove that two ring homs are equal, we can use the `ext` tactic which applies "extentionality"
