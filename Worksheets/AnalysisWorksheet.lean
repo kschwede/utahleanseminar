@@ -1,28 +1,42 @@
 import Mathlib
 
-/-!
-# Lean Seminar, Sep 29
+/-
+Fall 2026 Utah Lean Seminar, September 29th, 2026
+Analysis and calculus in Mathlib
 -/
 
-open Filter Topology intervalIntegral
+open Filter Topology
+open scoped Real
 
-/-! ## Part 1: Manually defined convergence -/
+/-!
+## 1. Limits with ε and N
 
-def ConvergesTo (s : ℕ → ℝ) (a : ℝ) : Prop :=
-  ∀ ε > 0, ∃ N, ∀ n ≥ N, |s n - a| < ε
+A sequence of real numbers is a function `ℕ → ℝ`. This is the definition of convergence from a
+first analysis course.
+-/
 
-theorem convergesTo_const (a : ℝ) : ConvergesTo (fun _ ↦ a) a := by
+def ConvergesTo (a : ℕ → ℝ) (L : ℝ) : Prop :=
+  ∀ ε > 0, ∃ N : ℕ, ∀ n ≥ N, |a n - L| < ε
+
+example (c : ℝ) : ConvergesTo (fun _ => c) c := by
+  intro ε hε
+  use 0
+  intro n _
+  simp
+  exact hε
+
+-- Exercise 1.1
+theorem ConvergesTo.add {a b : ℕ → ℝ} {L M : ℝ} (ha : ConvergesTo a L) (hb : ConvergesTo b M) :
+    ConvergesTo (a + b) (L + M) := by
   sorry
 
-theorem convergesTo_add {s t : ℕ → ℝ} {a b : ℝ}
-    (hs : ConvergesTo s a) (ht : ConvergesTo t b) :
-    ConvergesTo (s + t) (a + b) := by
-  sorry
+/-
+With ε's and δ's, every kind of limit (functions as `x → a`, as `x → ∞`, one-sided, ...) needs
+its own definition and its own copy of every theorem. Mathlib unifies these with filters.
+-/
 
-/-! ## Part 2: Filters
 
-Mathlib does not define limits of sequences, limits of functions, one-sided
-limits, limits at infinity, ... separately. Everything goes through filters.
+/-! ## 2. Filters
 
 A *filter* on `X` is a collection of subsets of `X` ("big" sets) that
 contains `X` and is closed under both supersets and finite intersections.
@@ -31,91 +45,164 @@ contains `X` and is closed under both supersets and finite intersections.
 
 `Tendsto f F G` means: the preimage under `f` of every `G`-big set is `F`-big.
 So `Tendsto s atTop (𝓝 a)` says every neighbourhood of `a` contains a tail of
-`s`, which is exactly convergence.
+`s`, which is exactly convergence. Read `Tendsto f F G` as "`f` tends to `G` along `F`"
 
 `∀ᶠ x in F, p x` (read "eventually p") means `{x | p x}` is `F`-big.
 -/
 
-#check Tendsto
-#check atTop
-#check 𝓝
-#check @nhds
-
--- Our definition agrees with Mathlib's.
+-- Exercise 2.1
 -- Hint: don't unfold anything!
-theorem convergesTo_iff_tendsto (s : ℕ → ℝ) (a : ℝ) :
-    ConvergesTo s a ↔ Tendsto s atTop (𝓝 a) := by
+theorem convergesTo_iff_tendsto (a : ℕ → ℝ) (L : ℝ) :
+    ConvergesTo a L ↔ Tendsto a atTop (𝓝 L) := by
   sorry
 
--- Thinking with filters: if `s → a > 0`, then `s` is eventually positive.
--- Try not to use `convergesTo_iff_tendsto`
-theorem eventually_pos {s : ℕ → ℝ} {a : ℝ}
-    (h : Tendsto s atTop (𝓝 a)) (ha : 0 < a) :
-    ∃ N, ∀ n ≥ N, 0 < s n := by
+/- With Exercise 2.1, Mathlib's library of facts about `Tendsto` applies to `ConvergesTo`. This is
+Exercise 1.1 again. -/
+#check Tendsto.add
+
+example {a b : ℕ → ℝ} {L M : ℝ} (ha : ConvergesTo a L) (hb : ConvergesTo b M) :
+    ConvergesTo (a + b) (L + M) := by
+  rw [convergesTo_iff_tendsto] at *
+  exact ha.add hb
+
+-- see also; compositional API!
+#check Tendsto.mul
+#check Tendsto.pow
+#check Tendsto.const_mul
+#check Tendsto.sub
+#check Tendsto.comp
+/- The tactic `fun_prop` proves that functions which are "obviously"
+continuous or differentiable are such, chaining the compositional lemmas. -/
+
+-- Exercise 2.2
+example {a b : ℕ → ℝ} {L M : ℝ} (ha : Tendsto a atTop (𝓝 L)) (hb : Tendsto b atTop (𝓝 M)) :
+    Tendsto (fun n => 3 * a n ^ 2 - b n) atTop (𝓝 (3 * L ^ 2 - M)) := by
   sorry
 
-/-! ## Part 3: Using the convergence library
+/-!
+## 3. Unified limits
+
+Nothing in `Tendsto.add` is specific to sequences: it holds for any filter on the domain.
+Each filter gives a different kind of limit.
+
+* `Tendsto a atTop (𝓝 L)`: the sequence `a n → L`
+* `Tendsto a atTop atTop`: `a n → ∞`
+* `Tendsto f atTop (𝓝 L)`: `f x → L` as `x → ∞`, for `f : ℝ → ℝ`
+  (`atTop : Filter ℝ` is the collection of sets containing some `[R, ∞)`)
+* `Tendsto f (𝓝[≠] x) (𝓝 L)`: `f y → L` as `y → x`, where `𝓝[≠] x` is the collection of sets
+  containing a punctured ball around `x`
+* `Tendsto f (𝓝[>] x) (𝓝 L)`: `f y → L` as `y → x` from the right (`𝓝[<] x`: from the left)
+* `Tendsto f (𝓝 x) (𝓝 (f x))`: `f` is continuous at `x`. This is Mathlib's definition of
+  `ContinuousAt f x`.
 -/
 
-example {s t : ℕ → ℝ} {a b : ℝ} (hs : ConvergesTo s a) (ht : ConvergesTo t b) :
-    ConvergesTo (s + t) (a + b) := by
+-- Exercise 3.1
+theorem tendsto_inv_natCast : Tendsto (fun n : ℕ => (n : ℝ)⁻¹) atTop (𝓝 0) := by
   sorry
 
-example {s t : ℕ → ℝ} {a b : ℝ} (hs : ConvergesTo s a) (ht : ConvergesTo t b) :
-    ConvergesTo (s * t) (a * b) := by
+-- Exercise 3.2
+example : Tendsto (fun x : ℝ => Real.exp (x⁻¹)) (𝓝[>] 0) atTop := by
   sorry
 
-example {s : ℕ → ℝ} {a b : ℝ} (ha : ConvergesTo s a) (hb : ConvergesTo s b) :
-    a = b := by
+-- Exercise 3.3
+-- try using `Continuous.tendsto`
+example : Tendsto (fun x : ℝ => x ^ 2 + 3 * x) (𝓝 2) (𝓝 10) := by
   sorry
 
-/-! ## Part 4: Differentiation
+-- Exercise 3.4 (challenge)
+example : Tendsto (fun n : ℕ => Real.sin n / n) atTop (𝓝 0) := by
+  sorry
 
-`HasDerivAt f f' x` says `f'` is the derivative of `f` at `x`. The API is
-compositional: `.add`, `.mul`, `.comp`, ... build derivatives out of pieces.
+/-!
+## 4. Derivatives
+
+For `f : ℝ → ℝ`:
+* `HasDerivAt f f' x` says that `f` is differentiable at `x` with derivative `f'`.
+* `deriv f x` is the derivative of `f` at `x` if it exists, and `0` if it doesn't.
+
+`HasDerivAt` is defined with filters.
+It is equivalent to the difference quotient tending to `f'` as `t → 0` with `t ≠ 0`:
 -/
+#check hasDerivAt_iff_tendsto_slope_zero
 
-example (x : ℝ) : HasDerivAt (fun x ↦ x * Real.exp x) (Real.exp x + x * Real.exp x) x := by
-  have heq : (1:ℝ) * Real.exp x + x * Real.exp x = Real.exp x + x * Real.exp x := by ring
-  rw [← heq]
-  exact (hasDerivAt_id x).mul (Real.hasDerivAt_exp x)
+#check hasDerivAt_pow
+#check hasDerivAt_id
+#check HasDerivAt.add
+#check HasDerivAt.const_mul
+#check HasDerivAt.exp
+
+/- `hasDerivAt_pow 2 x` gives the derivative as `↑2 * x ^ (2 - 1)`, which equals `2 * x` but is not
+written that way. `HasDerivAt.congr_deriv` replaces the derivative with an equal one. -/
+#check HasDerivAt.congr_deriv
+
+example (x : ℝ) : HasDerivAt (fun x => x ^ 2) (2 * x) x := by
+  have h := hasDerivAt_pow 2 x
+  apply h.congr_deriv
+  norm_num
+
+-- Exercise 4.1
+theorem hasDerivAt_cubic (x : ℝ) : HasDerivAt (fun x => x ^ 3 + 5 * x) (3 * x ^ 2 + 5) x := by
+  sorry
+
+-- Exercise 4.2
+theorem hasDerivAt_exp_sq (x : ℝ) :
+    HasDerivAt (fun x => Real.exp (x ^ 2)) (2 * x * Real.exp (x ^ 2)) x := by
+  sorry
+
+-- Exercise 4.3
+#check HasDerivAt.deriv
+
+example : deriv (fun x : ℝ => x ^ 3 + 5 * x) 2 = 17 := by
+  sorry
+
+-- Exercise 4.4
+-- Prove this using `strictMono_of_deriv_pos`
+example : StrictMono (fun x : ℝ => x ^ 3 + 5 * x) := by
+  sorry
+
+-- Exercise 4.5.
+-- Prove this using `is_const_of_deriv_eq_zero`; why does it need `Differentiable 𝕜 f`?
+#check is_const_of_deriv_eq_zero
+
+example (f : ℝ → ℝ) (hf : ∀ x, HasDerivAt f 0 x) : f 1 = f 0 := by
+  sorry
+
+/-!
+## 5. Integrals
+
+`∫ x in a..b, f x` is the integral of `f` from `a` to `b`: the Lebesgue integral over `(a, b]`, or
+minus the integral over `(b, a]` when `b < a`. If `f` is not integrable, the integral is the junk
+value `0`.
+-/
+#check integral_pow
+#check integral_sin
+#check integral_id
+#check intervalIntegral.integral_add
+#check intervalIntegral.integral_const
+
+example : ∫ x in (0 : ℝ)..1, x ^ 2 = 1 / 3 := by
+  rw [integral_pow]
+  norm_num
+
+-- Exercise 5.1
+example : ∫ x in (0 : ℝ)..π, Real.sin x = 2 := by
+  sorry
+
+-- Exercise 5.2
+-- see Continuous.intervalIntegrable
+example : ∫ x in (0 : ℝ)..1, (x + x ^ 2) = 5 / 6 := by
+  sorry
+
+-- Exercise 5.3
+-- try using the second FToC!
+#check intervalIntegral.integral_eq_sub_of_hasDerivAt
+
+example : ∫ x in (0 : ℝ)..1, 2 * x * Real.exp (x ^ 2) = Real.exp 1 - 1 := by
+  sorry
+
+-- Exercise 5.4 (challenge)
+#check Continuous.integral_hasStrictDerivAt
 
 example (x : ℝ) :
-    HasDerivAt (fun x ↦ Real.sin (x ^ 2)) (Real.cos (x ^ 2) * (2 * x)) x := by
+    HasDerivAt (fun u => ∫ t in (0 : ℝ)..u, Real.exp (t ^ 2)) (Real.exp (x ^ 2)) x := by
   sorry
-
--- `fun_prop` closes "obviously nice" (differentiability/continuity) goals outright.
-example : Differentiable ℝ (fun x : ℝ ↦ x ^ 3 * Real.sin x + Real.exp x) := by
-  fun_prop
-
-/-! ## Part 5: Integration
-
-`∫ x in a..b, f x` is the integral of `f` over `[a, b]`. Common closed forms are
-`simp` lemmas.
--/
-
--- Closed forms just compute.
-example : ∫ x in (0:ℝ)..1, x ^ 2 = 1 / 3 := by simp; norm_num
-
-example : ∫ x in (0:ℝ)..2, (3 * x ^ 2 - 1) = 6 := by
-  sorry
-
--- FTC-2: knowing a derivative computes the integral.
-example : ∫ x in (0:ℝ)..1, (2 * x) = 1 := by
-  have h : ∫ x in (0:ℝ)..1, (2 * x) = (1:ℝ) ^ 2 - (0:ℝ) ^ 2 :=
-    integral_eq_sub_of_hasDerivAt (f := fun x => x ^ 2)
-      (fun x _ => by simpa using hasDerivAt_pow 2 x)
-      ((continuous_const.mul continuous_id).intervalIntegrable _ _)
-  simpa using h
-
--- Integration by parts.
-example :
-    ∫ x in (0:ℝ)..Real.pi, x * Real.cos x =
-      Real.pi * Real.sin Real.pi - 0 * Real.sin 0 - ∫ x in (0:ℝ)..Real.pi, Real.sin x := by
-  have h := integral_mul_deriv_eq_deriv_mul_of_hasDerivAt
-    (u := fun x : ℝ => x) (v := Real.sin) (u' := fun _ : ℝ => (1:ℝ)) (v' := Real.cos)
-    (a := 0) (b := Real.pi)
-    (by fun_prop) (by fun_prop)
-    (fun x _ => hasDerivAt_id x) (fun x _ => Real.hasDerivAt_sin x)
-    (continuous_const.intervalIntegrable _ _) (Real.continuous_cos.intervalIntegrable _ _)
-  simpa using h
